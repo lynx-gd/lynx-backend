@@ -1,9 +1,17 @@
 const fs = require("fs");
 const path = require("path");
-const assetsDataPath = path.resolve(
-  __dirname,
-  `../persistance/data/Assets.json`
-);
+const assetsDataPath = path.resolve(__dirname,`../persistance/data/Assets.json`);
+const assetsImagePath = path.resolve(__dirname,`../public/images`);
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, assetsImagePath)
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname)
+  }
+})
+const upload = multer({ storage: storage })
 
 module.exports = app => {
   app.get("/api/test", (req, res) => {
@@ -38,8 +46,13 @@ module.exports = app => {
     });
   });
 
-  app.post("/api/asset", (req, res) => {
-    const { description, value, physicalAddress, owner } = req.query;
+  app.post("/api/asset", upload.array('images', 3), (req, res) => {
+    const { description, value, physicalAddress, owner } = req.body;
+    let images = [];
+    req.files.forEach(function(file) {
+      console.log('incoming file: ' + file.originalname);
+      images.push(file.originalname);
+    });
     fs.readFile(assetsDataPath, "utf8", (err, data) => {
       if (err) {
         console.log(err);
@@ -52,9 +65,10 @@ module.exports = app => {
         description,
         value,
         physicalAddress,
-        owner
+        owner,
+        images
       };
-      console.log("new asset: " + JSON.stringify(newAssetObj));
+      // console.log("new asset: " + JSON.stringify(newAssetObj));
       assetsData.push(newAssetObj);
       fs.writeFile(assetsDataPath, JSON.stringify(assetsData), "utf8", err => {
         if (err) {
@@ -65,4 +79,5 @@ module.exports = app => {
       });
     });
   });
+
 };
